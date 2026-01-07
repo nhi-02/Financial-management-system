@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+
+{% block title %}Tài khoản{% endblock %}
+
+{% block content %}
+<div class="header">
+  <h2>Quản lý Tài khoản</h2>
+  <a href="{{ url_for('accounts_new') }}" class="btn btn-primary">+ Liên kết tài khoản ngân hàng</a>
+</div>
+
+{% if accounts %}
+  <div class="accounts-grid">
+    {% for acc in accounts %}
+      <div class="account-card">
+        <h3>{{ acc.name }}</h3>
+        <p>{{ acc.bank or 'N/A' }} • {{ acc.accountNumber or '' }}</p>
+        <p class="balance">{{ acc.currentBalance | format_currency }}</p>
+        <a href="#" class="btn btn-sm">Xem</a>
+      </div>
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="empty-state">
+    <p>Chưa có tài khoản nào.</p>
+    <a href="{{ url_for('accounts_new') }}" class="btn btn-primary">+ Liên kết tài khoản ngân hàng</a>
+  </div>
+{% endif %}
+{% endblock %}

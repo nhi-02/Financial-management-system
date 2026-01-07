@@ -1,0 +1,300 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./finance.db"
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  phone     String?  @unique
+  email     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  accounts            Account[]
+  transactions        Transaction[]
+  savingsGoals        SavingsGoal[]
+  loanPrepayments     LoanPrepayment[]
+  recurringTransactions RecurringTransaction[]
+  plannedPayments     PlannedPayment[]
+  accountTransfers    AccountTransfer[]
+}
+
+model Account {
+  id              String   @id @default(cuid())
+  name            String
+  type            String // savings, checking, credit_card, joint
+  category        String   @default("bank") // bank, credit_card
+  owner           String?  // shubham, wife, joint - who owns this account
+  bank            String?
+  userId          String?
+  startingBalance Float    @default(0)
+  currentBalance  Float    @default(0)
+  creditLimit     Float?   // For credit cards
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user                User?                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions        Transaction[]
+  recurringTransactions RecurringTransaction[]
+  plannedPayments     PlannedPayment[]
+  fromTransfers       AccountTransfer[]    @relation("FromAccount")
+  toTransfers         AccountTransfer[]    @relation("ToAccount")
+
+  @@index([userId])
+  @@index([owner])
+  @@index([category])
+}
+
+model FinancialYear {
+  id        String   @id @default(cuid())
+  year      String   @unique // e.g., "2024-2025"
+  startDate DateTime
+  endDate   DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  budgets       Budget[]
+  transactions  Transaction[]
+  yearlySummary YearlySummary?
+}
+
+model Debt {
+  id               String   @id @default(cuid())
+  name             String
+  type             String // home, personal, car, credit_card, consumer
+  disbursementDate DateTime
+  loanAmount       Float
+  interestRate     Float
+  tenureMonths     Int
+  currentBalance   Float
+  minimumPayment   Float
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  loanSchedules   LoanSchedule[]
+  loanPrepayments LoanPrepayment[]
+}
+
+model LoanSchedule {
+  id               String    @id @default(cuid())
+  debtId           String
+  monthNumber      Int
+  principal        Float
+  interest         Float
+  emi              Float
+  balanceRemaining Float
+  dueDate          DateTime
+  paymentDate      DateTime?
+  isPaid           Boolean   @default(false)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  debt Debt @relation(fields: [debtId], references: [id], onDelete: Cascade)
+
+  @@index([debtId])
+  @@index([dueDate])
+}
+
+model LoanPrepayment {
+  id             String   @id @default(cuid())
+  debtId         String
+  userId         String?
+  prepaymentDate DateTime
+  amount         Float
+  interestSaved  Float
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  debt Debt  @relation(fields: [debtId], references: [id], onDelete: Cascade)
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([debtId])
+}
+
+model SavingsGoal {
+  id            String    @id @default(cuid())
+  name          String
+  targetAmount  Float
+  currentAmount Float     @default(0)
+  deadline      DateTime?
+  userId        String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Budget {
+  id              String   @id @default(cuid())
+  category        String
+  allocatedAmount Float
+  financialYearId String
+  month           Int? // null = yearly budget
+  rolloverEnabled Boolean  @default(true)
+  unusedAmount    Float    @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  financialYear FinancialYear @relation(fields: [financialYearId], references: [id], onDelete: Cascade)
+
+  @@index([financialYearId])
+  @@index([category])
+}
+
+model Transaction {
+  id              String   @id @default(cuid())
+  amount          Float
+  category        String
+  date            DateTime
+  description     String?
+  accountId       String?
+  userId          String?
+  source          String   @default("web") // whatsapp, web, import, recurring, planned, transfer
+  financialYearId String?
+  createdBy       String? // user who created it
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  account       Account?       @relation(fields: [accountId], references: [id], onDelete: SetNull)
+  user          User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
+  financialYear FinancialYear? @relation(fields: [financialYearId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([accountId])
+  @@index([date])
+  @@index([category])
+  @@index([financialYearId])
+}
+
+model Category {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  type      String // income, expense
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Investment {
+  id                String    @id @default(cuid())
+  type              String // sip, lump_sum
+  amount            Float
+  startDate         DateTime
+  stepUpPercentage  Float     @default(0)
+  currentValue      Float     @default(0)
+  returnsPercentage Float     @default(0)
+  lastImportDate    DateTime?
+  importSource      String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@index([startDate])
+}
+
+model YearlySummary {
+  id              String   @id @default(cuid())
+  financialYearId String   @unique
+  sumehakIncome   Float
+  shubhamIncome   Float
+  householdIncome Float
+  totalExpense    Float
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  financialYear FinancialYear @relation(fields: [financialYearId], references: [id], onDelete: Cascade)
+}
+
+model FinancialAlert {
+  id             String   @id @default(cuid())
+  type           String // budget, debt, savings, investment
+  priority       String // CRITICAL, HIGH, MEDIUM, LOW
+  message        String
+  actionRequired String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([priority])
+  @@index([type])
+}
+
+// Wallet Features - Recurring Transactions
+model RecurringTransaction {
+  id              String   @id @default(cuid())
+  name            String
+  amount          Float
+  category        String
+  accountId       String?
+  frequency       String // daily, weekly, monthly, yearly
+  startDate       DateTime
+  endDate         DateTime?
+  nextDueDate     DateTime
+  isActive        Boolean  @default(true)
+  description     String?
+  userId          String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  account Account? @relation(fields: [accountId], references: [id], onDelete: SetNull)
+  user    User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([accountId])
+  @@index([nextDueDate])
+  @@index([isActive])
+}
+
+// Wallet Features - Planned Payments
+model PlannedPayment {
+  id          String   @id @default(cuid())
+  name        String
+  amount      Float
+  category    String
+  accountId   String?
+  dueDate     DateTime
+  isPaid      Boolean  @default(false)
+  paidDate    DateTime?
+  description String?
+  reminderDays Int?   // Days before due date to send reminder
+  userId      String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  account Account? @relation(fields: [accountId], references: [id], onDelete: SetNull)
+  user    User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([accountId])
+  @@index([dueDate])
+  @@index([isPaid])
+}
+
+// Wallet Features - Account Transfers
+model AccountTransfer {
+  id              String   @id @default(cuid())
+  fromAccountId   String
+  toAccountId     String
+  amount          Float
+  date            DateTime
+  description     String?
+  userId          String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  fromAccount Account @relation("FromAccount", fields: [fromAccountId], references: [id], onDelete: Cascade)
+  toAccount   Account @relation("ToAccount", fields: [toAccountId], references: [id], onDelete: Cascade)
+  user        User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([fromAccountId])
+  @@index([toAccountId])
+  @@index([date])
+}
