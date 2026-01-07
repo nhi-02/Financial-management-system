@@ -11,7 +11,14 @@
         <div class="container">
             <h1 class="logo">💰 FinFlow</h1>
             <a href="{{ url_for('index') }}" class="nav-link">Trang chủ</a>
-            <a href="{{ url_for('accounts_list') }}" class="nav-link">Tài khoản</a>
+            <!-- Link 'Tài khoản' đã bị gỡ vì chức năng liên kết tài khoản không còn -->
+            {% if session.get('user_id') %}
+                <a href="{{ url_for('profile') }}" class="nav-link">{{ current_user.username if current_user else 'Tài khoản' }}</a>
+                <a href="{{ url_for('logout') }}" class="nav-link">Đăng xuất</a>
+            {% else %}
+                <a href="{{ url_for('login') }}" class="nav-link">Đăng nhập</a>
+                <a href="{{ url_for('register') }}" class="nav-link">Đăng ký</a>
+            {% endif %}
         </div>
     </nav>
     

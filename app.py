@@ -1,13 +1,54 @@
-from flask import Flask, render_template, request, jsonify, redirect, url_for, flash
+from flask import Flask, render_template, request, jsonify, redirect, url_for, flash, session
 from datetime import datetime
 import os
+from dotenv import load_dotenv
+
+# Load .env
+load_dotenv()
 
 # Import services và models
-from services import SavingsService, AccountService, TransactionService
+from services import SavingsService
 from utils import format_currency, format_date, validate_amount
+from models import User
+from flask import abort
+from functools import wraps
 
 app = Flask(__name__)
 app.secret_key = 'your-secret-key-change-in-production'
+# session cookie settings for local dev
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+app.config['SESSION_COOKIE_SECURE'] = False
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['PERMANENT_SESSION_LIFETIME'] = 86400
+
+# Bắt buộc đăng nhập cho hầu hết các route
+@app.before_request
+def require_login():
+    # các endpoint được phép truy cập khi chưa đăng nhập
+    public_endpoints = {'login', 'register', 'static', 'not_found', 'internal_error'}
+    endpoint = request.endpoint
+    if endpoint is None:
+        return
+    if endpoint.split('.')[-1] in public_endpoints:
+        return
+    if not session.get('user_id'):
+        return redirect(url_for('login'))
+
+# Inject current_user into templates
+@app.context_processor
+def inject_user():
+    user = None
+    user_id = session.get('user_id')
+    print(f"[DEBUG] inject_user: session user_id = {user_id}")
+    if user_id:
+        # if id is str/bytes/int, ensure passing the right type
+        try:
+            user = User.find_by_id(user_id)
+        except Exception as _e:
+            print(f"[DEBUG] inject_user: find_by_id error: {_e}")
+            user = None
+    print(f"[DEBUG] inject_user: current_user = {user}")
+    return {'current_user': user}
 
 # ==================== ĐĂNG KÝ TEMPLATE FILTERS ====================
 @app.template_filter('format_currency')
@@ -26,7 +67,11 @@ def _format_date(date_str):
 def index():
     """Trang chủ - Dashboard tổng quan"""
     try:
-        summary = SavingsService.get_summary()
+        user_id = session.get('user_id')
+        # lấy summary theo user; nếu user có none goals thì fallback lấy tất cả
+        summary = SavingsService.get_summary(user_id)
+        if user_id and (not summary or not summary.get('goals')):
+            summary = SavingsService.get_summary(None)
         return render_template('index.html', summary=summary)
     except Exception as e:
         flash(f'Lỗi: {str(e)}', 'error')
@@ -118,33 +163,84 @@ def api_goals():
 
 # ==================== ACCOUNTS ====================
 
-@app.route('/accounts')
-def accounts_list():
-    """Danh sách tài khoản"""
+# Chức năng liên kết tài khoản đã bị xóa — templates/accounts*.html không được route tới
+
+# ==================== AUTH ====================
+
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    if request.method == 'GET':
+        return render_template('register.html')
     try:
-        accounts = AccountService.get_all_accounts()
-        return render_template('accounts_list.html', accounts=accounts)
+        username = request.form['username'].strip()
+        name = request.form.get('name') or None
+        email = request.form.get('email') or None
+        password = request.form['password']
+        phone = request.form.get('phone') or None
+
+        if User.find_by_username(username):
+            flash('Tên đăng nhập đã tồn tại', 'error')
+            return redirect(url_for('register'))
+        if email and User.find_by_email(email):
+            flash('Email đã được sử dụng', 'error')
+            return redirect(url_for('register'))
+
+        user = User.create(username, name, email, password, phone)
+        session['user_id'] = user['id']
+        flash('Đăng ký thành công', 'success')
+        return redirect(url_for('index'))
     except Exception as e:
         flash(f'Lỗi: {str(e)}', 'error')
-        return render_template('accounts_list.html', accounts=[])
+        return redirect(url_for('register'))
 
-@app.route('/accounts/new')
-def accounts_new():
-    return render_template('accounts.html')
-
-@app.route('/accounts/create', methods=['POST'])
-def accounts_create():
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'GET':
+        return render_template('login.html')
     try:
-        name = request.form['name']
-        bank = request.form.get('bank')
-        account_number = request.form.get('accountNumber')
-        starting_balance = validate_amount(request.form.get('startingBalance', 0))
-        AccountService.create_account(name, bank, account_number, starting_balance)
-        flash('Tạo tài khoản thành công!', 'success')
-        return redirect(url_for('accounts_list'))
+        username = request.form['username'].strip()
+        password = request.form['password']
+        user = User.find_by_username(username)
+        if not user or not User.verify_password(user['passwordHash'], password):
+            flash('Email hoặc mật khẩu không đúng', 'error')
+            return redirect(url_for('login'))
+        # ensure session persists
+        session.permanent = True
+        session['user_id'] = user['id']
+        print(f"[DEBUG] login: set session user_id = {session.get('user_id')}, user.id type={type(user['id'])}")
+        flash('Đăng nhập thành công', 'success')
+        return redirect(url_for('index'))
     except Exception as e:
         flash(f'Lỗi: {str(e)}', 'error')
-        return redirect(url_for('accounts_new'))
+        return redirect(url_for('login'))
+
+@app.route('/logout')
+def logout():
+    """Đăng xuất người dùng"""
+    session.pop('user_id', None)
+    flash('Đã đăng xuất', 'success')
+    return redirect(url_for('login'))
+
+@app.route('/profile', methods=['GET'])
+def profile():
+    user_id = session.get('user_id')
+    if not user_id:
+        return redirect(url_for('login'))
+    user = User.find_by_id(user_id)
+    return render_template('profile.html', user=user)
+
+@app.route('/profile/update', methods=['POST'])
+def profile_update():
+    user_id = session.get('user_id')
+    if not user_id:
+        return redirect(url_for('login'))
+    new_name = request.form.get('name') or ''
+    try:
+        user = User.update_name(user_id, new_name)
+        flash('Cập nhật thông tin thành công', 'success')
+    except Exception as e:
+        flash(f'Lỗi: {e}', 'error')
+    return redirect(url_for('profile'))
 
 # ==================== ERROR HANDLERS ====================
 
@@ -159,8 +255,9 @@ def internal_error(error):
 # ==================== MAIN ====================
 
 if __name__ == '__main__':
-    # Kiểm tra database tồn tại (dev.db used by init_db/models)
-    if not os.path.exists('prisma/dev.db'):
+    # Kiểm tra database tồn tại (đọc từ env DATABASE_PATH)
+    db_path = os.getenv('DATABASE_PATH', 'prisma/dev.db')
+    if not os.path.exists(db_path):
          print("⚠️  Cảnh báo: Database chưa tồn tại")
          print("   Chạy: python init_db.py để tạo database")
      

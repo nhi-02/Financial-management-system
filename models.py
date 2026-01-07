@@ -1,12 +1,17 @@
 import sqlite3
 from datetime import datetime
 from typing import Optional, List, Dict, Any
-import uuid
+from werkzeug.security import generate_password_hash, check_password_hash
+import os
+from dotenv import load_dotenv
+
+# Load .env from project root so DATABASE_PATH can override default
+load_dotenv()
 
 class Database:
     """Database connection handler - giữ nguyên"""
     
-    def __init__(self, db_path: str = 'prisma/dev.db'):
+    def __init__(self, db_path=os.getenv('DATABASE_PATH','prisma/dev.db')):
         self.db_path = db_path
     
     def get_connection(self):
@@ -34,25 +39,32 @@ class Database:
         conn.close()
         return result
 
+    def execute_insert(self, query, params=()):
+        conn = self.get_connection()
+        cur = conn.cursor()
+        cur.execute(query, params)
+        conn.commit()
+        last = cur.lastrowid
+        conn.close()
+        return last
+
 # Global database instance
 db = Database()
+print(f"[DEBUG] Using SQLite DB: {db.db_path}")
 
 class SavingsGoal:
     """Savings Goal model - giữ nguyên"""
     
     @staticmethod
-    def create(name: str, target_amount: float, deadline: Optional[str] = None, user_id: Optional[str] = None) -> Dict[str, Any]:
+    def create(name: str, target_amount: float, deadline: Optional[str] = None, user_id: Optional[int] = None) -> Dict[str, Any]:
         """Tạo mục tiêu tiết kiệm mới"""
-        goal_id = str(uuid.uuid4())
         now = datetime.now().isoformat()
-        
         query = '''
-            INSERT INTO SavingsGoal (id, name, targetAmount, currentAmount, deadline, userId, createdAt, updatedAt)
-            VALUES (?, ?, ?, 0, ?, ?, ?, ?)
+            INSERT INTO SavingsGoal (name, targetAmount, currentAmount, deadline, userId, createdAt, updatedAt)
+            VALUES (?, ?, 0, ?, ?, ?, ?)
         '''
-        db.execute(query, (goal_id, name, target_amount, deadline, user_id, now, now))
-        
-        return SavingsGoal.find_by_id(goal_id)
+        new_id = db.execute_insert(query, (name, target_amount, deadline, user_id, now, now))
+        return SavingsGoal.find_by_id(new_id)
     
     @staticmethod
     def find_all(user_id: Optional[str] = None) -> List[Dict[str, Any]]:
@@ -126,16 +138,13 @@ class Account:
     @staticmethod
     def create(name: str, bank: str, account_number: str, starting_balance: float = 0) -> Dict[str, Any]:
         """Tạo tài khoản mới"""
-        account_id = str(uuid.uuid4())
         now = datetime.now().isoformat()
-        
         query = '''
-            INSERT INTO Account (id, name, bank, accountNumber, currentBalance, createdAt, updatedAt)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO Account (name, bank, accountNumber, currentBalance, createdAt, updatedAt)
+            VALUES (?, ?, ?, ?, ?, ?)
         '''
-        db.execute(query, (account_id, name, bank, account_number, starting_balance, now, now))
-        
-        return Account.find_by_id(account_id)
+        new_id = db.execute_insert(query, (name, bank, account_number, starting_balance, now, now))
+        return Account.find_by_id(new_id)
     
     @staticmethod
     def find_all() -> List[Dict[str, Any]]:
@@ -162,19 +171,16 @@ class Transaction:
     """Transaction model - Giao dịch thu chi"""
     
     @staticmethod
-    def create(account_id: str, amount: float, category: str, description: str, 
+    def create(account_id: Optional[int], amount: float, category: str, description: str, 
                date: str, trans_type: str) -> Dict[str, Any]:
         """Tạo giao dịch mới"""
-        trans_id = str(uuid.uuid4())
         now = datetime.now().isoformat()
-        
         query = '''
-            INSERT INTO Transaction (id, accountId, amount, category, description, date, type, createdAt, updatedAt)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO Transaction (accountId, amount, category, description, date, type, createdAt, updatedAt)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         '''
-        db.execute(query, (trans_id, account_id, amount, category, description, date, trans_type, now, now))
-        
-        return Transaction.find_by_id(trans_id)
+        new_id = db.execute_insert(query, (account_id, amount, category, description, date, trans_type, now, now))
+        return Transaction.find_by_id(new_id)
     
     @staticmethod
     def find_all(account_id: Optional[str] = None, limit: int = 100) -> List[Dict[str, Any]]:
@@ -201,3 +207,44 @@ class Transaction:
         query = 'DELETE FROM Transaction WHERE id = ?'
         db.execute(query, (trans_id,))
         return True
+
+class User:
+    """User model - simple auth"""
+    
+    @staticmethod
+    def create(username, name, email, password, phone=None):
+        now = datetime.now().isoformat()
+        phash = generate_password_hash(password)
+        # Insert without id -> SQLite assigns INTEGER PK
+        query = '''INSERT INTO "User" (username,name,email,passwordHash,phone,createdAt,updatedAt)
+                   VALUES (?, ?, ?, ?, ?, ?, ?)'''
+        new_id = db.execute_insert(query, (username, name, email, phash, phone, now, now))
+        return User.find_by_id(new_id)
+    
+    @staticmethod
+    def find_by_id(user_id: str) -> Optional[Dict[str, Any]]:
+        query = 'SELECT * FROM "User" WHERE id = ?'
+        result = db.execute_one(query, (user_id,))
+        return dict(result) if result else None
+    
+    @staticmethod
+    def find_by_username(username: str) -> Optional[Dict[str, Any]]:
+        query = 'SELECT * FROM "User" WHERE username = ?'
+        result = db.execute_one(query, (username,))
+        return dict(result) if result else None
+    
+    @staticmethod
+    def find_by_email(email: str) -> Optional[Dict[str, Any]]:
+        query = 'SELECT * FROM "User" WHERE email = ?'
+        result = db.execute_one(query, (email,))
+        return dict(result) if result else None
+    
+    @staticmethod
+    def verify_password(stored_hash: str, password: str) -> bool:
+        return check_password_hash(stored_hash, password)
+    
+    @staticmethod
+    def update_name(user_id: str, new_name: str) -> Dict[str, Any]:
+        query = 'UPDATE "User" SET name = ?, updatedAt = ? WHERE id = ?'
+        db.execute(query, (new_name, datetime.now().isoformat(), user_id))
+        return User.find_by_id(user_id)
