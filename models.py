@@ -171,42 +171,39 @@ class Transaction:
     """Transaction model - Giao dịch thu chi"""
     
     @staticmethod
-    def create(account_id: Optional[int], amount: float, category: str, description: str, 
-               date: str, trans_type: str) -> Dict[str, Any]:
-        """Tạo giao dịch mới"""
+    def create(user_id: int, category_id: int, amount: float,
+               note: str, date: str, trans_type: str):
         now = datetime.now().isoformat()
         query = '''
-            INSERT INTO Transaction (accountId, amount, category, description, date, type, createdAt, updatedAt)
+            INSERT INTO "Transaction"
+            (userId, categoryId, amount, note, date, type, createdAt, updatedAt)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         '''
-        new_id = db.execute_insert(query, (account_id, amount, category, description, date, trans_type, now, now))
+        new_id = db.execute_insert(query, (
+            user_id, category_id, amount, note, date,
+            trans_type, now, now
+        ))
         return Transaction.find_by_id(new_id)
+
+    @staticmethod
+    def find_by_id(trans_id: int):
+        row = db.execute_one(
+            'SELECT * FROM "Transaction" WHERE id = ?', (trans_id,)
+        )
+        return dict(row) if row else None
     
     @staticmethod
-    def find_all(account_id: Optional[str] = None, limit: int = 100) -> List[Dict[str, Any]]:
-        """Lấy danh sách giao dịch"""
-        if account_id:
-            query = 'SELECT * FROM Transaction WHERE accountId = ? ORDER BY date DESC LIMIT ?'
-            results = db.execute(query, (account_id, limit))
-        else:
-            query = 'SELECT * FROM Transaction ORDER BY date DESC LIMIT ?'
-            results = db.execute(query, (limit,))
-        
-        return [dict(row) for row in results]
-    
-    @staticmethod
-    def find_by_id(trans_id: str) -> Optional[Dict[str, Any]]:
-        """Tìm giao dịch theo ID"""
-        query = 'SELECT * FROM Transaction WHERE id = ?'
-        result = db.execute_one(query, (trans_id,))
-        return dict(result) if result else None
-    
-    @staticmethod
-    def delete(trans_id: str) -> bool:
-        """Xóa giao dịch"""
-        query = 'DELETE FROM Transaction WHERE id = ?'
-        db.execute(query, (trans_id,))
-        return True
+    def find_by_month(user_id: int, month: str):
+        query = '''
+            SELECT t.*, c.name AS categoryName
+            FROM "Transaction" t
+            JOIN Category c ON t.categoryId = c.id
+            WHERE t.userId = ?
+            AND strftime('%Y-%m', t.date) = ?
+            ORDER BY t.date DESC, t.createdAt DESC
+        '''
+        rows = db.execute(query, (user_id, month))
+        return [dict(r) for r in rows]
 
 class User:
     """User model - simple auth"""
@@ -248,3 +245,35 @@ class User:
         query = 'UPDATE "User" SET name = ?, updatedAt = ? WHERE id = ?'
         db.execute(query, (new_name, datetime.now().isoformat(), user_id))
         return User.find_by_id(user_id)
+
+class Category:
+    @staticmethod
+    def create(name, type_, user_id, icon=None):
+        now = datetime.now().isoformat()
+        query = '''
+            INSERT INTO Category (name, type, userId, createdAt)
+            VALUES (?, ?, ?, ?)
+        '''
+        new_id = db.execute_insert(
+            query, (name, type_, user_id, now)
+        )
+        return Category.find_by_id(new_id)
+
+    @staticmethod
+    def find_all(user_id, type_):
+        rows = db.execute(
+            '''
+            SELECT * FROM Category
+            WHERE userId = ? AND type = ?
+            ORDER BY name
+            ''',
+            (user_id, type_)
+        )
+        return [dict(r) for r in rows]
+
+    @staticmethod
+    def find_by_id(cat_id):
+        row = db.execute_one(
+            'SELECT * FROM Category WHERE id = ?', (cat_id,)
+        )
+        return dict(row) if row else None

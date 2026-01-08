@@ -7,9 +7,10 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Import services và models
-from services import SavingsService
+from services import SavingsService, TransactionService, AnalysisService
 from utils import format_currency, format_date, validate_amount
-from models import User
+from models import User, Category, Transaction
+from ai_advisor import AIAdvisor
 from flask import abort
 from functools import wraps
 
@@ -21,6 +22,15 @@ app.config['SESSION_COOKIE_SECURE'] = False
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['PERMANENT_SESSION_LIFETIME'] = 86400
 
+# THÊM: Khởi tạo AI Advisor
+try:
+    ai_advisor = AIAdvisor()
+    AI_ENABLED = True
+except Exception as e:
+    print(f"⚠️  AI không khả dụng: {e}")
+    ai_advisor = None
+    AI_ENABLED = False
+    
 # Bắt buộc đăng nhập cho hầu hết các route
 @app.before_request
 def require_login():
@@ -48,7 +58,7 @@ def inject_user():
             print(f"[DEBUG] inject_user: find_by_id error: {_e}")
             user = None
     print(f"[DEBUG] inject_user: current_user = {user}")
-    return {'current_user': user}
+    return {'current_user': user, 'ai_enabled': AI_ENABLED}  # THÊM ai_enabled
 
 # ==================== ĐĂNG KÝ TEMPLATE FILTERS ====================
 @app.template_filter('format_currency')
@@ -150,6 +160,98 @@ def add_amount(goal_id):
     
     return redirect(url_for('index'))
 
+# ==================== AI ADVISOR ROUTES (MỚI) ====================
+
+@app.route('/ai/analyze')
+def ai_analyze():
+    """Trang phân tích tài chính bằng AI"""
+    if not AI_ENABLED:
+        flash('Tính năng AI chưa được kích hoạt. Vui lòng cấu hình GEMINI_API_KEY trong .env', 'error')
+        return redirect(url_for('index'))
+    
+    return render_template('ai_analyze.html')
+
+@app.route('/ai/analyze/run', methods=['POST'])
+def ai_analyze_run():
+    """Chạy phân tích AI"""
+    if not AI_ENABLED:
+        return jsonify({'success': False, 'error': 'AI không khả dụng'}), 503
+    
+    try:
+        user_id = session.get('user_id')
+        
+        # Lấy dữ liệu tài chính
+        financial_data = SavingsService.get_financial_data_for_ai(user_id)
+        
+        # Gọi AI
+        result = ai_advisor.analyze_financial_health(financial_data)
+        
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/ai/plan/<goal_id>')
+def ai_plan_goal(goal_id):
+    """Trang kế hoạch tiết kiệm cho mục tiêu cụ thể"""
+    if not AI_ENABLED:
+        flash('Tính năng AI chưa được kích hoạt', 'error')
+        return redirect(url_for('index'))
+    
+    try:
+        goal = SavingsService.get_goal_by_id(goal_id)
+        if not goal:
+            flash('Không tìm thấy mục tiêu', 'error')
+            return redirect(url_for('index'))
+        
+        return render_template('ai_plan.html', goal=goal)
+    except Exception as e:
+        flash(f'Lỗi: {str(e)}', 'error')
+        return redirect(url_for('index'))
+
+@app.route('/ai/plan/<goal_id>/generate', methods=['POST'])
+def ai_plan_generate(goal_id):
+    """Tạo kế hoạch tiết kiệm bằng AI"""
+    if not AI_ENABLED:
+        return jsonify({'success': False, 'error': 'AI không khả dụng'}), 503
+    
+    try:
+        user_id = session.get('user_id')
+        goal = SavingsService.get_goal_by_id(goal_id)
+        
+        if not goal:
+            return jsonify({'success': False, 'error': 'Không tìm thấy mục tiêu'}), 404
+        
+        # Lấy dữ liệu tài chính
+        financial_data = SavingsService.get_financial_data_for_ai(user_id)
+        
+        # Gọi AI
+        result = ai_advisor.suggest_savings_plan(goal, financial_data)
+        
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/ai/ask', methods=['POST'])
+def ai_ask():
+    """API hỏi đáp nhanh với AI"""
+    if not AI_ENABLED:
+        return jsonify({'success': False, 'error': 'AI không khả dụng'}), 503
+    
+    try:
+        question = request.json.get('question', '').strip()
+        if not question:
+            return jsonify({'success': False, 'error': 'Câu hỏi trống'}), 400
+        
+        # Context (optional)
+        user_id = session.get('user_id')
+        context = SavingsService.get_financial_data_for_ai(user_id)
+        
+        answer = ai_advisor.quick_advice(question, context)
+        
+        return jsonify({'success': True, 'answer': answer})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+    
 # ==================== API (JSON) ====================
 
 @app.route('/api/goals')
@@ -188,6 +290,27 @@ def register():
         user = User.create(username, name, email, password, phone)
         session['user_id'] = user['id']
         flash('Đăng ký thành công', 'success')
+        default_expense = [
+            ('Ăn uống', 'fa-utensils'),
+            ('Đi lại', 'fa-car'),
+            ('Học tập', 'fa-book'),
+            ('Giải trí', 'fa-gamepad'),
+            ('Nhà ở', 'fa-house')
+        ]
+
+        default_income = [
+            ('Việc chính', 'fa-briefcase'),
+            ('Làm thêm', 'fa-laptop'),
+            ('Gia đình', 'fa-people-group'),
+            ('Đầu tư', 'fa-chart-line')
+        ]
+
+        for name, icon in default_expense:
+            Category.create(name, 'expense', user['id'], icon)
+
+        for name, icon in default_income:
+            Category.create(name, 'income', user['id'], icon)
+
         return redirect(url_for('index'))
     except Exception as e:
         flash(f'Lỗi: {str(e)}', 'error')
@@ -241,6 +364,126 @@ def profile_update():
     except Exception as e:
         flash(f'Lỗi: {e}', 'error')
     return redirect(url_for('profile'))
+
+@app.route('/transaction/create', methods=['POST'])
+def create_transaction():
+    try:
+        user_id = session['user_id']
+        category_id = int(request.form['category_id'])
+        amount = validate_amount(request.form['amount'])
+        date = request.form['date']
+        note = request.form.get('note', '')
+        trans_type = request.form['type']  # expense | income
+
+        TransactionService.add_transaction(
+            user_id, category_id, amount, date, note, trans_type
+        )
+
+        flash('Đã ghi giao dịch', 'success')
+        return redirect(request.referrer or url_for('index'))
+
+    except Exception as e:
+        flash(str(e), 'error')
+        return redirect(request.referrer or url_for('index'))
+    
+@app.route('/expenses')
+def expenses():
+    user_id = session['user_id']
+    month = request.args.get('month') or datetime.now().strftime('%Y-%m')
+
+    data = TransactionService.summary_by_month(
+        user_id, month, 'expense'
+    )
+    return render_template('expenses.html', data=data, month=month)
+
+@app.route('/income')
+def income():
+    user_id = session['user_id']
+    month = request.args.get('month') or datetime.now().strftime('%Y-%m')
+
+    data = TransactionService.summary_by_month(
+        user_id, month, 'income'
+    )
+    return render_template('income.html', data=data, month=month)
+
+@app.route('/analysis')
+def analysis():
+    user_id = session['user_id']
+    month = request.args.get('month') or datetime.now().strftime('%Y-%m')
+
+    transactions = Transaction.find_by_month(user_id, month)
+
+    expense_data = AnalysisService.category_summary(
+        user_id, month, 'expense'
+    )
+    income_data = AnalysisService.category_summary(
+        user_id, month, 'income'
+    )
+
+    daily_data = AnalysisService.daily_summary(
+        user_id, month
+    )
+
+    return render_template(
+        'analysis.html',
+        transactions=transactions,
+        expense_data=expense_data,
+        income_data=income_data,
+        daily_data=daily_data,
+        month=month
+    )
+
+
+@app.route('/api/categories')
+def api_categories():
+    user_id = session['user_id']
+    type_ = request.args.get('type')
+    cats = Category.find_all(user_id, type_)
+    return jsonify(cats)
+@staticmethod
+def create_default_for_user(user_id):
+    default_expense = [
+        ('Ăn uống', 'expense', 'fa-utensils'),
+        ('Đi lại', 'expense', 'fa-car'),
+        ('Học tập', 'expense', 'fa-book'),
+        ('Giải trí', 'expense', 'fa-gamepad'),
+    ]
+
+    default_income = [
+        ('Lương', 'income', 'fa-briefcase'),
+        ('Làm thêm', 'income', 'fa-laptop'),
+    ]
+
+    for name, type_, icon in default_expense + default_income:
+        Category.create(name, type_, user_id, icon)
+
+@app.route('/api/category/create', methods=['POST'])
+def api_create_category():
+    user_id = session.get('user_id')
+    if not user_id:
+        return jsonify({'error': 'Chưa đăng nhập'}), 401
+
+    data = request.get_json(silent=True)
+    if not data:
+        return jsonify({'error': 'Invalid JSON'}), 400
+
+    name = data.get('name', '').strip()
+    type_ = data.get('type')
+
+    if not name:
+        return jsonify({'error': 'Tên danh mục không được trống'}), 400
+
+    if type_ not in ('expense', 'income'):
+        return jsonify({'error': 'Loại danh mục không hợp lệ'}), 400
+
+    try:
+        cat = Category.create(name, type_, user_id)
+        return jsonify(cat)
+    except Exception as e:
+        print("❌ Create category error:", e)
+        return jsonify({'error': 'Server error'}), 500
+
+
 
 # ==================== ERROR HANDLERS ====================
 

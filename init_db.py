@@ -8,14 +8,14 @@ from dotenv import load_dotenv
 load_dotenv()
 DB_PATH = os.getenv('DATABASE_PATH', 'prisma/dev.db')
 
-
+"""
 def migrate_to_integer_ids(conn: sqlite3.Connection):
-    """
+    
     Migrate existing TEXT/UUID id schema to INTEGER AUTOINCREMENT ids.
     Copies data into *_new tables, maps old_id -> new_id for foreign keys,
     then replaces old tables.
     If tables do not exist or are already integer-based, does nothing.
-    """
+    
     cur = conn.cursor()
 
     def table_exists(name: str) -> bool:
@@ -139,7 +139,7 @@ def migrate_to_integer_ids(conn: sqlite3.Connection):
     conn.commit()
 
     print("✅ Migration hoàn tất: id chuyển sang INTEGER AUTOINCREMENT")
-
+"""
 
 def init_database():
     """Khởi tạo database với schema cơ bản (KHÔNG có dữ liệu mẫu)"""
@@ -153,7 +153,7 @@ def init_database():
     cursor = conn.cursor()
 
     # run migration if needed (migrate will skip if DB is new or already integer)
-    migrate_to_integer_ids(conn)
+    # migrate_to_integer_ids(conn)
 
     # tiếp tục tạo bảng (IF NOT EXISTS) với id INTEGER AUTOINCREMENT
     cursor.execute('''
@@ -184,15 +184,16 @@ def init_database():
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS `Transaction` (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            accountId INTEGER,
+            userId INTEGER NOT NULL,
+            categoryId INTEGER NOT NULL,
             amount REAL NOT NULL,
-            category TEXT NOT NULL,
-            description TEXT,
+            note TEXT,
             date TEXT NOT NULL,
-            type TEXT NOT NULL,
+            type TEXT NOT NULL,     -- 'expense' | 'income'
             createdAt TEXT NOT NULL,
             updatedAt TEXT NOT NULL,
-            FOREIGN KEY (accountId) REFERENCES Account(id)
+            FOREIGN KEY (categoryId) REFERENCES Category(id),
+            FOREIGN KEY (userId) REFERENCES User(id)
         )
     ''')
 
@@ -206,6 +207,15 @@ def init_database():
             phone TEXT,
             createdAt TEXT NOT NULL,
             updatedAt TEXT NOT NULL
+        )
+    ''')
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS Category (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            type TEXT NOT NULL,      -- 'expense' | 'income'
+            userId INTEGER,
+            createdAt TEXT NOT NULL
         )
     ''')
 

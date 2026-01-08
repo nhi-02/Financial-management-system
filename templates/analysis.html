@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+{% block title %}Phân tích{% endblock %}
+{% block content %}
+
+<div class="analysis-header">
+  <form method="get">
+    <input type="month" name="month" value="{{ month }}">
+    <button type="submit">Xem</button>
+  </form>
+</div>
+
+<div class="chart-wrapper">
+
+  <!-- Biểu đồ đường (mặc định) -->
+  <canvas id="lineChart"></canvas>
+
+  <!-- Biểu đồ tròn -->
+  <canvas id="pieChart" class="hidden"></canvas>
+
+  <div class="chart-nav">
+    <button onclick="showLine()">📈 Theo thời gian</button>
+    <button onclick="showExpense()">Chi tiêu</button>
+    <button onclick="showIncome()">Thu nhập</button>
+  </div>
+
+</div>
+
+<script>
+const dailyData = {{ daily_data | tojson }};
+const expenseData = {{ expense_data | tojson }};
+const incomeData = {{ income_data | tojson }};
+</script>
+
+<script>
+let chart = null;
+
+function showLine() {
+  document.getElementById('lineChart').classList.remove('hidden');
+  document.getElementById('pieChart').classList.add('hidden');
+
+  if (chart) chart.destroy();
+
+  chart = new Chart(document.getElementById('lineChart'), {
+    type: 'line',
+    data: {
+      labels: dailyData.map(d => d.date),
+      datasets: [
+        {
+          label: 'Chi tiêu',
+          data: dailyData.map(d => d.expense),
+          borderWidth: 2
+        },
+        {
+          label: 'Thu nhập',
+          data: dailyData.map(d => d.income),
+          borderWidth: 2
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { position: 'bottom' }
+      }
+    }
+  });
+}
+
+function showPie(data, title) {
+  document.getElementById('lineChart').classList.add('hidden');
+  document.getElementById('pieChart').classList.remove('hidden');
+
+  if (chart) chart.destroy();
+
+  chart = new Chart(document.getElementById('pieChart'), {
+    type: 'pie',
+    data: {
+      labels: data.map(d => d.category),
+      datasets: [{
+        data: data.map(d => d.total)
+      }]
+    },
+    options: {
+      plugins: {
+        title: { display: true, text: title },
+        legend: { position: 'bottom' }
+      }
+    }
+  });
+}
+
+function showExpense() {
+  showPie(expenseData, 'Chi tiêu theo danh mục');
+}
+
+function showIncome() {
+  showPie(incomeData, 'Thu nhập theo danh mục');
+}
+
+// Mặc định
+showLine();
+</script>
+
+
+
+<div class="transaction-list">
+  {% set current_date = None %}
+
+  {% for t in transactions %}
+    {% if t.date != current_date %}
+      <div class="transaction-date">
+        📅 {{ t.date }}
+      </div>
+      {% set current_date = t.date %}
+    {% endif %}
+
+    <div class="transaction-item {{ t.type }}">
+      <div class="left">
+        <span class="icon">
+          {% if t.type == 'expense' %}➖{% else %}➕{% endif %}
+        </span>
+        <div>
+          <strong>{{ t.categoryName }}</strong><br>
+          <small>{{ t.note }}</small>
+        </div>
+      </div>
+
+      <div class="amount">
+        {{ t.amount | format_currency }}
+      </div>
+    </div>
+  {% endfor %}
+</div>
+{% endblock %}
