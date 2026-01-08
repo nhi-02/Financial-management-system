@@ -10,12 +10,16 @@
 <body>
     <nav class="navbar">
         <div class="container">
-            <h1 class="logo">🪙 Fin Compass</h1>
+            <span class="logo-icon">💰</span>
+            <div class="logo-text-wrapper">
+                <h1 class="logo-title">FIN COMPASS</h1>
+                <p class="logo-tagline">A Better Life, Within Reach</p>
+            </div>
             <a href="{{ url_for('index') }}" class="nav-link">Trang chủ</a>
             <!-- Link 'Tài khoản' đã bị gỡ vì chức năng liên kết tài khoản không còn -->
              
             <a href="{{ url_for('analysis') }}" class="nav-link">📊 Phân tích</a>
-
+            
             {% if ai_enabled %}
             <a href="{{ url_for('ai_analyze') }}" class="nav-link">🤖 AI Advisor</a>
             {% endif %}

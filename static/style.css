@@ -2,6 +2,7 @@
    FINFLOW - NAVY BLUE & GOLD THEME
    Primary: #000080 (Navy Blue)
    Accent: #FFD700 (Gold)
+   Font: Orbitron (Futuristic) + Playfair Display (Luxury)
    ============================================ */
 
 * {
@@ -35,13 +36,137 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    flex-wrap: wrap;
+    gap: 20px;
 }
 
-.logo {
-    font-size: 1.5rem;
-    font-weight: bold;
+/* Logo Container - Icon + Text Wrapper */
+.logo-container {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.logo-icon {
+    font-size: 2.5rem;
+    animation: float 3s ease-in-out infinite;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+}
+
+@keyframes float {
+    0%, 100% { 
+        transform: translateY(0px) rotate(0deg); 
+    }
+    50% { 
+        transform: translateY(-8px) rotate(-5deg); 
+    }
+}
+
+.logo-text-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    align-items: flex-start;
+}
+
+/* FinFlow Title - TH Futurama Style with Sparkling Gold Effect */
+.logo-title {
+    font-family: 'Orbitron', 'Impact', sans-serif;
+    font-size: 2rem;
+    font-weight: 900;
+    letter-spacing: 3px;
+    margin: 0;
+    line-height: 1.1;
+    
+    /* Sparkling gradient effect */
+    background: linear-gradient(
+        90deg,
+        #FFD700 0%,
+        #FFF9C4 15%,
+        #FFD700 30%,
+        #FFECB3 45%,
+        #FFD700 60%,
+        #FFF9C4 75%,
+        #FFD700 90%,
+        #FFECB3 100%
+    );
+    background-size: 200% auto;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    animation: sparkleGold 4s linear infinite;
+    
+    /* Multiple layered glow effects */
+    filter: 
+        drop-shadow(0 0 3px rgba(255, 215, 0, 1))
+        drop-shadow(0 0 8px rgba(255, 215, 0, 0.8))
+        drop-shadow(0 0 15px rgba(255, 215, 0, 0.6))
+        drop-shadow(0 2px 4px rgba(0, 0, 0, 0.4));
+    
+    text-transform: uppercase;
+    position: relative;
+}
+
+@keyframes sparkleGold {
+    0% { 
+        background-position: 0% center;
+        filter: 
+            drop-shadow(0 0 5px rgba(255, 215, 0, 1))
+            drop-shadow(0 0 10px rgba(255, 215, 0, 0.8))
+            drop-shadow(0 0 20px rgba(255, 215, 0, 0.5));
+    }
+    25% {
+        filter: 
+            drop-shadow(0 0 8px rgba(255, 255, 200, 1))
+            drop-shadow(0 0 15px rgba(255, 215, 0, 0.9))
+            drop-shadow(0 0 25px rgba(255, 215, 0, 0.6));
+    }
+    50% { 
+        background-position: 100% center;
+        filter: 
+            drop-shadow(0 0 10px rgba(255, 215, 0, 1))
+            drop-shadow(0 0 20px rgba(255, 215, 0, 0.9))
+            drop-shadow(0 0 30px rgba(255, 215, 0, 0.7));
+    }
+    75% {
+        filter: 
+            drop-shadow(0 0 8px rgba(255, 255, 200, 1))
+            drop-shadow(0 0 15px rgba(255, 215, 0, 0.9))
+            drop-shadow(0 0 25px rgba(255, 215, 0, 0.6));
+    }
+    100% { 
+        background-position: 0% center;
+        filter: 
+            drop-shadow(0 0 5px rgba(255, 215, 0, 1))
+            drop-shadow(0 0 10px rgba(255, 215, 0, 0.8))
+            drop-shadow(0 0 20px rgba(255, 215, 0, 0.5));
+    }
+}
+
+/* Tagline - TH Luxury Style (Italic, Elegant) */
+.logo-tagline {
+    font-family: 'Playfair Display', 'Georgia', serif;
+    font-size: 0.7rem;
+    font-style: italic;
+    font-weight: 400;
     color: #FFD700;
-    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+    margin: 0;
+    letter-spacing: 1.5px;
+    opacity: 0.95;
+    text-shadow: 
+        0 1px 3px rgba(0, 0, 0, 0.4),
+        0 0 8px rgba(255, 215, 0, 0.3);
+    padding-left: 3px;
+    line-height: 1;
+    margin-top: -2px;
+}
+
+/* Navigation Links Container */
+.nav-links {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
 }
 
 .nav-link {
@@ -51,11 +176,13 @@ body {
     border-radius: 6px;
     transition: all 0.3s;
     font-weight: 500;
+    font-size: 0.95rem;
 }
 
 .nav-link:hover {
     background: rgba(255, 215, 0, 0.2);
     color: #FFD700;
+    transform: translateY(-1px);
 }
 
 /* ==================== ALERT MESSAGES ==================== */
@@ -446,7 +573,7 @@ body {
 }
 
 .fab:hover {
-    transform: scale(1.1);
+    transform: scale(1.1) rotate(90deg);
     box-shadow: 0 6px 16px rgba(255, 215, 0, 0.5);
 }
 
@@ -764,7 +891,25 @@ body {
     
     .navbar .container {
         flex-direction: column;
-        gap: 12px;
+        align-items: flex-start;
+    }
+    
+    .logo-container {
+        width: 100%;
+    }
+    
+    .logo-title {
+        font-size: 1.75rem;
+        letter-spacing: 2px;
+    }
+    
+    .logo-tagline {
+        font-size: 0.65rem;
+    }
+    
+    .nav-links {
+        width: 100%;
+        justify-content: flex-start;
     }
     
     .chart-nav {
@@ -799,4 +944,26 @@ body {
 
 .border-gold {
     border-color: #FFD700;
+}
+.chart-nav {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    margin-top: 20px;
+}
+
+.chart-nav button {
+    padding: 8px 16px;
+    border-radius: 8px;
+    border: 1px solid #000080;
+    background: white;
+    color: #000080;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.chart-nav button:hover {
+    background: #000080;
+    color: #FFD700;
 }

@@ -2,133 +2,328 @@
 {% block title %}Phân tích{% endblock %}
 {% block content %}
 
-<div class="analysis-header">
-  <form method="get">
-    <input type="month" name="month" value="{{ month }}">
-    <button type="submit">Xem</button>
-  </form>
+<div class="analysis-container">
+    <h2 class="analysis-title">📊 Phân tích tài chính</h2>
+    
+    <!-- Summary Cards -->
+    <div class="analysis-summary">
+        <div class="summary-card income">
+            <div class="summary-icon">💰</div>
+            <div class="summary-content">
+                <p class="summary-label">Tổng thu nhập</p>
+                <p class="summary-value">{{ total_income | format_currency }}</p>
+            </div>
+        </div>
+        
+        <div class="summary-card expense">
+            <div class="summary-icon">💸</div>
+            <div class="summary-content">
+                <p class="summary-label">Tổng chi tiêu</p>
+                <p class="summary-value">{{ total_expense | format_currency }}</p>
+            </div>
+        </div>
+        
+        <div class="summary-card balance">
+            <div class="summary-icon">📈</div>
+            <div class="summary-content">
+                <p class="summary-label">Chênh lệch</p>
+                <p class="summary-value {% if total_income - total_expense >= 0 %}positive{% else %}negative{% endif %}">
+                    {{ (total_income - total_expense) | format_currency }}
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Grid -->
+    <div class="charts-grid">
+        <!-- Balance Timeline Chart -->
+<div class="chart-container">
+    <div class="chart-header">
+        <h3 id="chartTitle">📈 Theo thời gian</h3>
+        <p class="chart-subtitle" id="chartSubtitle">90 ngày gần nhất</p>
+    </div>
+
+    <div class="chart-wrapper">
+        <canvas id="mainChart"></canvas>
+    </div>
+
+    <div class="chart-nav">
+        <button onclick="showLine()">📈 Theo thời gian</button>
+        <button onclick="showExpense()">💸 Chi tiêu</button>
+        <button onclick="showIncome()">💰 Thu nhập</button>
+    </div>
 </div>
 
-<div class="chart-wrapper">
-
-  <!-- Biểu đồ đường (mặc định) -->
-  <canvas id="lineChart"></canvas>
-
-  <!-- Biểu đồ tròn -->
-  <canvas id="pieChart" class="hidden"></canvas>
-
-  <div class="chart-nav">
-    <button onclick="showLine()">📈 Theo thời gian</button>
-    <button onclick="showExpense()">Chi tiêu</button>
-    <button onclick="showIncome()">Thu nhập</button>
-  </div>
-
+    </div>
 </div>
 
 <script>
-const dailyData = {{ daily_data | tojson }};
+// Data from backend
+const balanceData = {{ balance_data | tojson }};
 const expenseData = {{ expense_data | tojson }};
 const incomeData = {{ income_data | tojson }};
-</script>
-
-<script>
 let chart = null;
+const ctx = document.getElementById('mainChart');
 
 function showLine() {
-  document.getElementById('lineChart').classList.remove('hidden');
-  document.getElementById('pieChart').classList.add('hidden');
+    updateTitle('📈 Theo thời gian', '90 ngày gần nhất');
 
-  if (chart) chart.destroy();
+    if (chart) chart.destroy();
 
-  chart = new Chart(document.getElementById('lineChart'), {
-    type: 'line',
-    data: {
-      labels: dailyData.map(d => d.date),
-      datasets: [
-        {
-          label: 'Chi tiêu',
-          data: dailyData.map(d => d.expense),
-          borderWidth: 2
+    chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: balanceData.map(d => d.date),
+            datasets: [{
+                label: 'Số dư',
+                data: balanceData.map(d => d.balance),
+                borderWidth: 3,
+                tension: 0.4,
+                fill: true
+            }]
         },
-        {
-          label: 'Thu nhập',
-          data: dailyData.map(d => d.income),
-          borderWidth: 2
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { display: false }
+            }
         }
-      ]
-    },
-    options: {
-      responsive: true,
-      plugins: {
-        legend: { position: 'bottom' }
-      }
-    }
-  });
+    });
 }
 
 function showPie(data, title) {
-  document.getElementById('lineChart').classList.add('hidden');
-  document.getElementById('pieChart').classList.remove('hidden');
+    updateTitle(title, 'Phân bổ theo danh mục');
 
-  if (chart) chart.destroy();
+    if (chart) chart.destroy();
 
-  chart = new Chart(document.getElementById('pieChart'), {
-    type: 'pie',
-    data: {
-      labels: data.map(d => d.category),
-      datasets: [{
-        data: data.map(d => d.total)
-      }]
-    },
-    options: {
-      plugins: {
-        title: { display: true, text: title },
-        legend: { position: 'bottom' }
-      }
-    }
-  });
+    chart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: data.map(d => d.category),
+            datasets: [{
+                data: data.map(d => d.total),
+                backgroundColor: colorPalette
+            }]
+        },
+        options: {
+            plugins: {
+                legend: { position: 'bottom' }
+            }
+        }
+    });
 }
 
 function showExpense() {
-  showPie(expenseData, 'Chi tiêu theo danh mục');
+    showPie(expenseData, '💸 Chi tiêu');
 }
 
 function showIncome() {
-  showPie(incomeData, 'Thu nhập theo danh mục');
+    showPie(incomeData, '💰 Thu nhập');
 }
 
-// Mặc định
-showLine();
+function updateTitle(title, subtitle) {
+    document.getElementById('chartTitle').innerText = title;
+    document.getElementById('chartSubtitle').innerText = subtitle;
+}
+
+document.addEventListener('DOMContentLoaded', showLine);
+
+// Color schemes
+const navyBlue = '#000080';
+const gold = '#FFD700';
+const colorPalette = [
+    '#000080', // Navy Blue
+    '#FFD700', // Gold
+    '#0000CC', // Light Navy
+    '#FFC700', // Dark Gold
+    '#4169E1', // Royal Blue
+    '#FFE44D', // Light Gold
+    '#1E3A8A', // Deep Blue
+    '#F59E0B', // Amber
+];
+
+// Chart.js configuration
+Chart.defaults.font.family = "'Segoe UI', 'Roboto', sans-serif";
+Chart.defaults.color = '#333';
+
 </script>
+<!-- Transaction List -->
+<div class="transaction-section">
+    <h3 class="transaction-title">📋 Giao dịch gần đây</h3>
 
+    <div class="transaction-list">
+        {% set current_date = None %}
 
+        {% for t in transactions %}
+            {% if t.date != current_date %}
+                <div class="transaction-date">
+                    📅 {{ t.date }}
+                </div>
+                {% set current_date = t.date %}
+            {% endif %}
 
-<div class="transaction-list">
-  {% set current_date = None %}
+            <div class="transaction-item {{ t.type }}">
+                <div class="transaction-left">
+                    <span class="transaction-icon">
+                        {% if t.type == 'expense' %}➖{% else %}➕{% endif %}
+                    </span>
+                    <div>
+                        <strong>{{ t.categoryName }}</strong><br>
+                        <small>{{ t.note }}</small>
+                    </div>
+                </div>
 
-  {% for t in transactions %}
-    {% if t.date != current_date %}
-      <div class="transaction-date">
-        📅 {{ t.date }}
-      </div>
-      {% set current_date = t.date %}
-    {% endif %}
-
-    <div class="transaction-item {{ t.type }}">
-      <div class="left">
-        <span class="icon">
-          {% if t.type == 'expense' %}➖{% else %}➕{% endif %}
-        </span>
-        <div>
-          <strong>{{ t.categoryName }}</strong><br>
-          <small>{{ t.note }}</small>
-        </div>
-      </div>
-
-      <div class="amount">
-        {{ t.amount | format_currency }}
-      </div>
+                <div class="transaction-amount">
+                    {{ t.amount | format_currency }}
+                </div>
+            </div>
+        {% endfor %}
     </div>
-  {% endfor %}
 </div>
+
+<style>
+.analysis-container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.analysis-title {
+    color: #000080;
+    font-size: 2rem;
+    margin-bottom: 30px;
+    text-align: center;
+    font-weight: 700;
+}
+
+/* Summary Cards */
+.analysis-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 20px;
+    margin-bottom: 40px;
+}
+
+.summary-card {
+    background: white;
+    padding: 24px;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 128, 0.1);
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    transition: all 0.3s;
+}
+
+.summary-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 4px 12px rgba(0, 0, 128, 0.15);
+}
+
+.summary-card.income {
+    border-left: 4px solid #FFD700;
+}
+
+.summary-card.expense {
+    border-left: 4px solid #ef4444;
+}
+
+.summary-card.balance {
+    border-left: 4px solid #000080;
+}
+
+.summary-icon {
+    font-size: 3rem;
+    width: 70px;
+    height: 70px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #000080 0%, #0000CC 100%);
+    border-radius: 12px;
+}
+
+.summary-content {
+    flex: 1;
+}
+
+.summary-label {
+    font-size: 0.9rem;
+    color: #6b7280;
+    margin-bottom: 8px;
+}
+
+.summary-value {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: #000080;
+}
+
+.summary-value.positive {
+    color: #10b981;
+}
+
+.summary-value.negative {
+    color: #ef4444;
+}
+
+/* Charts Grid */
+.charts-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    gap: 24px;
+}
+
+.chart-container {
+    background: white;
+    padding: 24px;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 128, 0.1);
+    border-top: 3px solid #000080;
+}
+
+.chart-header {
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+.chart-header h3 {
+    color: #000080;
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+
+.chart-subtitle {
+    color: #6b7280;
+    font-size: 0.875rem;
+}
+
+.chart-wrapper {
+    position: relative;
+    height: 300px;
+    display: flex;
+    justify-content: center;   /* căn ngang */
+    align-items: center;       /* căn dọc */
+}
+
+.chart-wrapper canvas {
+    max-height: 300px;
+}
+
+@media (max-width: 768px) {
+    .charts-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .analysis-summary {
+        grid-template-columns: 1fr;
+    }
+    
+    .chart-wrapper {
+        height: 250px;
+    }
+}
+</style>
+
 {% endblock %}

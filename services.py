@@ -190,43 +190,126 @@ class TransactionService:
     
 class AnalysisService:
     @staticmethod
-    def category_summary(user_id, month, trans_type):
+    def category_summary(user_id, trans_type):
+        """Tổng hợp theo danh mục cho 3 tháng gần nhất"""
+        # Lấy ngày 3 tháng trước
+        three_months_ago = (datetime.now() - timedelta(days=90)).strftime('%Y-%m-%d')
+        
         query = '''
             SELECT c.name AS category, SUM(t.amount) AS total
             FROM "Transaction" t
             JOIN Category c ON t.categoryId = c.id
             WHERE t.userId = ?
               AND t.type = ?
-              AND strftime('%Y-%m', t.date) = ?
+              AND t.date >= ?
             GROUP BY c.id
+            ORDER BY total DESC
         '''
-        rows = db.execute(query, (user_id, trans_type, month))
+        rows = db.execute(query, (user_id, trans_type, three_months_ago))
         return [dict(r) for r in rows]
     
     @staticmethod
-    def daily_summary(user_id, month):
+    def balance_timeline(user_id):
+        """
+        Tính số dư theo ngày cho 90 ngày gần nhất
+        Số dư = Tổng thu nhập - Tổng chi tiêu tính đến ngày đó
+        """
+        # Lấy 90 ngày gần nhất
+        ninety_days_ago = (datetime.now() - timedelta(days=90)).strftime('%Y-%m-%d')
+        
         conn = db.get_connection()
         cur = conn.cursor()
 
+        # Lấy tất cả transactions trong 90 ngày
         cur.execute("""
-            SELECT date,
-                   SUM(CASE WHEN type='expense' THEN amount ELSE 0 END) AS expense,
-                   SUM(CASE WHEN type='income' THEN amount ELSE 0 END) AS income
+            SELECT date, amount, type
             FROM "Transaction"
             WHERE userId = ?
-              AND strftime('%Y-%m', date) = ?
-            GROUP BY date
-            ORDER BY date
-        """, (user_id, month))
+              AND date >= ?
+            ORDER BY date ASC
+        """, (user_id, ninety_days_ago))
 
-        rows = cur.fetchall()
+        transactions = cur.fetchall()
         conn.close()
 
-        return [
-            {
-                'date': r['date'],
-                'expense': r['expense'] or 0,
-                'income': r['income'] or 0
-            }
-            for r in rows
-        ]
+        # Tạo dict để lưu số dư theo ngày
+        daily_balance = {}
+        running_balance = 0
+        
+        # Tính số dư ban đầu (trước 90 ngày)
+        conn = db.get_connection()
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT 
+                SUM(CASE WHEN type='income' THEN amount ELSE 0 END) as total_income,
+                SUM(CASE WHEN type='expense' THEN amount ELSE 0 END) as total_expense
+            FROM "Transaction"
+            WHERE userId = ? AND date < ?
+        """, (user_id, ninety_days_ago))
+        
+        initial = cur.fetchone()
+        conn.close()
+        
+        if initial:
+            running_balance = (initial['total_income'] or 0) - (initial['total_expense'] or 0)
+        
+        # Tạo danh sách tất cả các ngày trong 90 ngày
+        current_date = datetime.strptime(ninety_days_ago, '%Y-%m-%d')
+        end_date = datetime.now()
+        
+        all_dates = []
+        while current_date <= end_date:
+            date_str = current_date.strftime('%Y-%m-%d')
+            all_dates.append(date_str)
+            daily_balance[date_str] = running_balance
+            current_date += timedelta(days=1)
+        
+        # Cập nhật số dư cho các ngày có giao dịch
+        for trans in transactions:
+            date_str = trans['date']
+            amount = trans['amount']
+            trans_type = trans['type']
+            
+            if trans_type == 'income':
+                running_balance += amount
+            else:  # expense
+                running_balance -= amount
+            
+            # Cập nhật số dư cho ngày này và tất cả các ngày sau
+            for d in all_dates:
+                if d >= date_str:
+                    daily_balance[d] = running_balance
+                    
+        # Chuyển sang format cho Chart.js
+        result = []
+        for date_str in all_dates:
+            result.append({
+                'date': datetime.strptime(date_str, '%Y-%m-%d').strftime('%d/%m'),
+                'balance': daily_balance.get(date_str, 0)
+            })
+        
+        return result
+    
+    @staticmethod
+    def get_totals(user_id):
+        """Lấy tổng thu nhập và chi tiêu 3 tháng gần nhất"""
+        three_months_ago = (datetime.now() - timedelta(days=90)).strftime('%Y-%m-%d')
+        
+        conn = db.get_connection()
+        cur = conn.cursor()
+        
+        cur.execute("""
+            SELECT 
+                SUM(CASE WHEN type='income' THEN amount ELSE 0 END) as total_income,
+                SUM(CASE WHEN type='expense' THEN amount ELSE 0 END) as total_expense
+            FROM "Transaction"
+            WHERE userId = ? AND date >= ?
+        """, (user_id, three_months_ago))
+        
+        result = cur.fetchone()
+        conn.close()
+        
+        return {
+            'total_income': result['total_income'] or 0,
+            'total_expense': result['total_expense'] or 0
+        }

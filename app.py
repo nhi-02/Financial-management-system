@@ -409,28 +409,26 @@ def income():
 @app.route('/analysis')
 def analysis():
     user_id = session['user_id']
-    month = request.args.get('month') or datetime.now().strftime('%Y-%m')
+    
+    # Charts (giữ nguyên)
+    balance_data = AnalysisService.balance_timeline(user_id)
+    expense_data = AnalysisService.category_summary(user_id, 'expense')
+    income_data = AnalysisService.category_summary(user_id, 'income')
+    totals = AnalysisService.get_totals(user_id)
 
-    transactions = Transaction.find_by_month(user_id, month)
-
-    expense_data = AnalysisService.category_summary(
-        user_id, month, 'expense'
-    )
-    income_data = AnalysisService.category_summary(
-        user_id, month, 'income'
-    )
-
-    daily_data = AnalysisService.daily_summary(
-        user_id, month
+    # ✅ THÊM: LẤY TOÀN BỘ GIAO DỊCH
+    transactions = (
+        Transaction.find_all_by_user(user_id)
     )
 
     return render_template(
         'analysis.html',
-        transactions=transactions,
+        balance_data=balance_data,
         expense_data=expense_data,
         income_data=income_data,
-        daily_data=daily_data,
-        month=month
+        total_income=totals['total_income'],
+        total_expense=totals['total_expense'],
+        transactions=transactions   # ✅ QUAN TRỌNG
     )
 
 

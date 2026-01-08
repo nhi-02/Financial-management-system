@@ -204,6 +204,24 @@ class Transaction:
         '''
         rows = db.execute(query, (user_id, month))
         return [dict(r) for r in rows]
+    
+    @staticmethod
+    def find_all_by_user(user_id):
+        query = '''
+            SELECT 
+                t.id,
+                t.amount,
+                t.date,
+                t.note,
+                t.type,
+                c.name AS categoryName
+            FROM "Transaction" t
+            JOIN Category c ON t.categoryId = c.id
+            WHERE t.userId = ?
+            ORDER BY t.date DESC, t.createdAt DESC
+        '''
+        rows = db.execute(query, (user_id,))
+        return [dict(r) for r in rows]
 
 class User:
     """User model - simple auth"""
