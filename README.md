@@ -1,4 +1,4 @@
-# 💰 FinFlow - Quản lý Tiết kiệm Cá nhân
+# 💰 Fin Compass - Quản lý Tiết kiệm Cá nhân
 
 Ứng dụng web quản lý mục tiêu tiết kiệm với AI tư vấn tài chính (Python Flask + SQLite + Google Gemini).
 
@@ -17,7 +17,7 @@
 
 ```bash
 git clone <repository-url>
-cd finflow
+cd Financial-management-system
 
 # Tạo virtualenv (khuyến nghị)
 python -m venv venv
@@ -54,7 +54,7 @@ Truy cập: **http://localhost:5000**
 ## 📂 Cấu trúc
 
 ```
-finflow/
+Financial-management-system/
 ├── app.py              # Flask app + routes
 ├── models.py           # Database models (SQLite)
 ├── services.py         # Business logic
