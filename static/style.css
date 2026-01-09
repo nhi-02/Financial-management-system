@@ -26,7 +26,7 @@ body {
 
 /* ==================== NAVBAR ==================== */
 .navbar {
-    background: linear-gradient(135deg, #000080 0%, #000055 100%);
+    background: linear-gradient(135deg, #000080 0%, #1a0066 50%, #4a0080 80%);
     color: white;
     padding: 15px 0;
     box-shadow: 0 4px 6px rgba(0, 0, 128, 0.3);
@@ -966,4 +966,24 @@ body {
 .chart-nav button:hover {
     background: #000080;
     color: #FFD700;
+}
+
+.gold-wallet i {
+  background: linear-gradient(
+    120deg,
+    #f6e27f,
+    #ffd700,
+    #ffec99,
+    #f6e27f
+  );
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-size: 200% auto;
+  animation: gold-shimmer 2.5s linear infinite;
+}
+
+@keyframes gold-shimmer {
+  to {
+    background-position: 200% center;
+  }
 }

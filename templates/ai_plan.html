@@ -2,7 +2,7 @@
 {% block title %}Kế hoạch AI - {{ goal.name }}{% endblock %}
 {% block content %}
 <div class="form-container" style="max-width: 900px;">
-    <h2>🎯 Kế hoạch tiết kiệm cho: {{ goal.name }}</h2>
+    <h2><i class="bi bi-bullseye"></i> Kế hoạch tiết kiệm cho: {{ goal.name }}</h2>
     
     <div style="background:#f3f4f6; padding:15px; border-radius:8px; margin-bottom:20px;">
         <p><strong>Mục tiêu:</strong> {{ goal.targetAmount | format_currency }}</p>
@@ -14,7 +14,7 @@
     </div>
     
     <button id="generateBtn" class="btn btn-primary" onclick="generatePlan()">
-        ✨ Tạo kế hoạch bằng AI
+        <i class="bi bi-lightbulb-fill"></i> Tạo kế hoạch bằng AI
     </button>
     
     <div id="loading" style="display:none; text-align:center; margin:30px 0;">

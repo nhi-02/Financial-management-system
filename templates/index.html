@@ -9,7 +9,7 @@
 <!-- Tổng quan -->
 <div class="stats">
     <div class="stat-card">
-        <span class="icon">🎯</span>
+        <span class="icon"><i class="bi bi-bullseye"></i></span>
         <div>
             <p class="label">Tổng mục tiêu</p>
             <p class="value">{{ summary.totalTarget | format_currency }}</p>
@@ -17,7 +17,7 @@
     </div>
     
     <div class="stat-card">
-        <span class="icon">💰</span>
+        <span class="icon"><i class="bi bi-piggy-bank-fill"></i></span>
         <div>
             <p class="label">Đã tiết kiệm</p>
             <p class="value success">{{ summary.totalCurrent | format_currency }}</p>
@@ -25,7 +25,7 @@
     </div>
     
     <div class="stat-card">
-        <span class="icon">📊</span>
+        <span class="icon"><i class="bi bi-graph-up-arrow"></i></span>
         <div>
             <p class="label">Tiến độ</p>
             <p class="value">{{ summary.overallProgress }}%</p>
@@ -40,7 +40,7 @@
     <div class="goal-card">
         <h3>{{ goal.name }}</h3>
         {% if goal.deadline %}
-        <p class="deadline">🗓️ {{ goal.deadline | format_date }}</p>
+        <p class="deadline"><i class="bi bi-calendar-event"></i> {{ goal.deadline | format_date }}</p>
         {% endif %}
         
         <div class="progress-section">
@@ -62,6 +62,9 @@
         </form>
         
         <div class="actions">
+            {% if ai_enabled %}
+            <a href="{{ url_for('ai_plan_goal', goal_id=goal.id) }}" class="btn btn-sm" style="background:#10b981; color:white;">Kế hoạch AI</a>
+            {% endif %}
             <a href="{{ url_for('edit_goal', goal_id=goal.id) }}" class="btn btn-sm">Sửa</a>
             <form method="POST" action="{{ url_for('delete_goal', goal_id=goal.id) }}" style="display:inline" 
                   onsubmit="return confirm('Xóa mục tiêu {{ goal.name }}?')">
@@ -73,7 +76,7 @@
 </div>
 {% else %}
 <div class="empty-state">
-    <span class="icon-large">🎯</span>
+    <span class="icon-large"><i class="bi bi-bullseye" style="font-size: 4rem;"></i></span>
     <h3>Chưa có mục tiêu nào</h3>
     <p>Tạo mục tiêu đầu tiên để bắt đầu tiết kiệm</p>
     <a href="{{ url_for('new_goal') }}" class="btn btn-primary">+ Tạo mục tiêu</a>

@@ -3,12 +3,12 @@
 {% block content %}
 
 <div class="analysis-container">
-    <h2 class="analysis-title">📊 Phân tích tài chính</h2>
+    <h2 class="analysis-title"><i class="bi bi-pie-chart-fill"></i> Phân tích tài chính</h2>
     
     <!-- Summary Cards -->
     <div class="analysis-summary">
         <div class="summary-card income">
-            <div class="summary-icon">💰</div>
+            <div class="summary-icon"><i class="bi bi-cash-coin" style="font-size: 3rem; color: white;"></i></div>
             <div class="summary-content">
                 <p class="summary-label">Tổng thu nhập</p>
                 <p class="summary-value">{{ total_income | format_currency }}</p>
@@ -16,7 +16,7 @@
         </div>
         
         <div class="summary-card expense">
-            <div class="summary-icon">💸</div>
+            <div class="summary-icon"><i class="bi bi-credit-card-fill" style="font-size: 3rem; color: white;"></i></div>
             <div class="summary-content">
                 <p class="summary-label">Tổng chi tiêu</p>
                 <p class="summary-value">{{ total_expense | format_currency }}</p>
@@ -24,7 +24,7 @@
         </div>
         
         <div class="summary-card balance">
-            <div class="summary-icon">📈</div>
+            <div class="summary-icon"><i class="bi bi-graph-up" style="font-size: 3rem; color: white;"></i></div>
             <div class="summary-content">
                 <p class="summary-label">Chênh lệch</p>
                 <p class="summary-value {% if total_income - total_expense >= 0 %}positive{% else %}negative{% endif %}">
@@ -39,8 +39,8 @@
         <!-- Balance Timeline Chart -->
 <div class="chart-container">
     <div class="chart-header">
-        <h3 id="chartTitle">📈 Theo thời gian</h3>
-        <p class="chart-subtitle" id="chartSubtitle">90 ngày gần nhất</p>
+        <h3 id="chartTitle"><i class="bi bi-graph-up-arrow"></i> Theo thời gian</h3>
+        <p class="chart-subtitle" id="chartSubtitle"></p>
     </div>
 
     <div class="chart-wrapper">
@@ -48,9 +48,9 @@
     </div>
 
     <div class="chart-nav">
-        <button onclick="showLine()">📈 Theo thời gian</button>
-        <button onclick="showExpense()">💸 Chi tiêu</button>
-        <button onclick="showIncome()">💰 Thu nhập</button>
+        <button onclick="showLine()"><i class="bi bi-graph-up-arrow"></i> Theo thời gian</button>
+        <button onclick="showExpense()"><i class="bi bi-credit-card-fill"></i> Chi tiêu</button>
+        <button onclick="showIncome()"><i class="bi bi-cash-coin"></i> Thu nhập</button>
     </div>
 </div>
 
@@ -66,7 +66,7 @@ let chart = null;
 const ctx = document.getElementById('mainChart');
 
 function showLine() {
-    updateTitle('📈 Theo thời gian', '90 ngày gần nhất');
+    updateTitle('Theo thời gian', '');
 
     if (chart) chart.destroy();
 
@@ -92,7 +92,7 @@ function showLine() {
 }
 
 function showPie(data, title) {
-    updateTitle(title, 'Phân bổ theo danh mục');
+    updateTitle(title, '');
 
     if (chart) chart.destroy();
 
@@ -114,11 +114,11 @@ function showPie(data, title) {
 }
 
 function showExpense() {
-    showPie(expenseData, '💸 Chi tiêu');
+    showPie(expenseData, 'Chi tiêu');
 }
 
 function showIncome() {
-    showPie(incomeData, '💰 Thu nhập');
+    showPie(incomeData, 'Thu nhập');
 }
 
 function updateTitle(title, subtitle) {
@@ -149,7 +149,7 @@ Chart.defaults.color = '#333';
 </script>
 <!-- Transaction List -->
 <div class="transaction-section">
-    <h3 class="transaction-title">📋 Giao dịch gần đây</h3>
+    <h3 class="transaction-title"><i class="bi bi-journal-text"></i> Giao dịch gần đây</h3>
 
     <div class="transaction-list">
         {% set current_date = None %}
@@ -157,7 +157,7 @@ Chart.defaults.color = '#333';
         {% for t in transactions %}
             {% if t.date != current_date %}
                 <div class="transaction-date">
-                    📅 {{ t.date }}
+                    <i class="bi bi-calendar3"></i> {{ t.date }}
                 </div>
                 {% set current_date = t.date %}
             {% endif %}
@@ -165,7 +165,7 @@ Chart.defaults.color = '#333';
             <div class="transaction-item {{ t.type }}">
                 <div class="transaction-left">
                     <span class="transaction-icon">
-                        {% if t.type == 'expense' %}➖{% else %}➕{% endif %}
+                        {% if t.type == 'expense' %}<i class="bi bi-dash-circle-fill" style="color:#f4a6a6;"></i>{% else %}<i class="bi bi-plus-circle-fill" style="color:#9ad5a3;"></i>{% endif %}
                     </span>
                     <div>
                         <strong>{{ t.categoryName }}</strong><br>
@@ -309,6 +309,22 @@ Chart.defaults.color = '#333';
 
 .chart-wrapper canvas {
     max-height: 300px;
+}
+
+.chart-nav button {
+    padding: 8px 16px;
+    border-radius: 8px;
+    border: 1px solid #A4C3D2;
+    background: white;
+    color: #6B8CAE;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.chart-nav button:hover {
+    background: #6B8CAE;
+    color: white;
 }
 
 @media (max-width: 768px) {

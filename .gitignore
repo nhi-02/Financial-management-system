@@ -1,3 +1,23 @@
-# Python cache
+# Python
 __pycache__/
+*.py[cod]
+
+# Virtual environment
 venv/
+.venv/
+
+# Environment variables
+.env
+.env.*
+
+# Logs & cache
+*.log
+.pytest_cache/
+
+# OS / IDE
+.DS_Store
+.vscode/
+.idea/
+
+# Data files
+*.xlsx

@@ -2,13 +2,13 @@
 {% block title %}Phân tích AI{% endblock %}
 {% block content %}
 <div class="form-container" style="max-width: 900px;">
-    <h2>🤖 Phân tích Tài chính bằng AI</h2>
+    <h2><i class="bi bi-robot"></i> Phân tích Tài chính bằng AI</h2>
     <p style="color: #6b7280; margin-bottom: 24px;">
         AI sẽ phân tích thu nhập, chi tiêu và đưa ra gợi ý kế hoạch tiết kiệm dựa trên mục tiêu của bạn.
     </p>
     
     <button id="analyzeBtn" class="btn btn-primary" onclick="runAnalysis()">
-        🔍 Bắt đầu phân tích
+        <i class="bi bi-search"></i> Bắt đầu phân tích
     </button>
     
     <div id="loading" style="display:none; text-align:center; margin:30px 0;">
@@ -16,7 +16,7 @@
     </div>
     
     <div id="result" style="display:none; margin-top:30px;">
-        <h3>📊 Kết quả phân tích:</h3>
+        <h3>Kết quả phân tích:</h3>
         <div id="analysisContent" style="background:#f9fafb; padding:20px; border-radius:8px; white-space:pre-wrap; line-height:1.8;">
         </div>
     </div>
