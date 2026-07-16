@@ -11,7 +11,7 @@
 
 ---
 
-## 🚀 Cài đặt nhanh (5 phút)
+## 🚀 Cài đặt nhanh
 
 ### 1. Clone và cài đặt
 
@@ -19,7 +19,7 @@
 git clone <repository-url>
 cd Financial-management-system
 
-# Tạo virtualenv (khuyến nghị)
+# Tạo virtualenv
 python -m venv venv
 venv\Scripts\activate          # Windows
 # source venv/bin/activate     # macOS/Linux
@@ -38,18 +38,12 @@ DATABASE_PATH=dev.db
 GEMINI_API_KEY=your_api_key_here
 ```
 
-**Lấy API key miễn phí**: https://makersuite.google.com/app/apikey
-
 ### 3. Tạo database và chạy
 
 ```bash
 python init_db.py    # Tạo database
 python app.py        # Chạy app
 ```
-
-Truy cập: **http://localhost:5000**
-
----
 
 ## 📂 Cấu trúc
 
@@ -114,12 +108,6 @@ waitress-serve --host=0.0.0.0 --port=5000 app:app
 
 ---
 
-## 📄 License
-
-MIT - Free to use
-
 ---
 
 **Tech Stack**: Flask 3.0 • SQLite • Google Gemini API  
-**Version**: 1.0.0  
-**Made with ❤️ for better financial management**
